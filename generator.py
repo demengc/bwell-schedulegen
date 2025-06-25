@@ -1,72 +1,61 @@
 import os
 import json
 import itertools
-from InquirerPy import prompt
-from InquirerPy.validator import EmptyInputValidator
+# from InquirerPy import prompt
+# from InquirerPy.validator import EmptyInputValidator
 
 def get_scenarios():
     """Gets scenario choices from the user."""
-    questions = [
-        {
-            "type": "checkbox",
-            "message": "Select scenarios to include:",
-            "choices": ["mole", "lab", "theater", "butterfly"],
-            "name": "scenarios",
-            "validate": lambda result: len(result) >= 1,
-            "invalid_message": "Please select at least one scenario.",
-        }
-    ]
-    return prompt(questions)["scenarios"]
+    print("Available scenarios: mole, lab, theater, butterfly")
+    while True:
+        try:
+            scenarios_str = input("Enter scenarios to include (comma-separated): ")
+            scenarios = [s.strip() for s in scenarios_str.split(",")]
+            if not all(s in ["mole", "lab", "theater", "butterfly"] for s in scenarios) or not scenarios:
+                raise ValueError
+            return scenarios
+        except ValueError:
+            print("Invalid input. Please enter valid, comma-separated scenarios.")
 
 def get_permutation_length(scenarios):
     """Gets the number of scenarios per permutation from the user."""
-    questions = [
-        {
-            "type": "number",
-            "message": f"Enter the number of scenarios for each permutation (1-{len(scenarios)}):",
-            "name": "length",
-            "min_allowed": 1,
-            "max_allowed": len(scenarios),
-            "validate": EmptyInputValidator(),
-            "filter": lambda val: int(val),
-        }
-    ]
-    return prompt(questions)["length"]
+    while True:
+        try:
+            length = int(input(f"Enter the number of scenarios for each permutation (1-{len(scenarios)}): "))
+            if 1 <= length <= len(scenarios):
+                return length
+            else:
+                print(f"Please enter a number between 1 and {len(scenarios)}.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
 
 def get_duration():
     """Gets the duration for each scenario from the user."""
-    questions = [
-        {
-            "type": "number",
-            "message": "Enter the duration in seconds for each scenario:",
-            "name": "duration",
-            "min_allowed": 0,
-            "float_allowed": True,
-            "validate": EmptyInputValidator(),
-            "filter": lambda val: float(val),
-        }
-    ]
-    return prompt(questions)["duration"]
+    while True:
+        try:
+            duration = float(input("Enter the duration in seconds for each scenario: "))
+            if duration >= 0:
+                return duration
+            else:
+                print("Duration cannot be negative.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
 
 def get_exclusions(scenarios):
     """Gets scenario combinations to exclude from the user."""
-    questions = [
-        {
-            "type": "checkbox",
-            "message": "Select combinations to exclude (if any):",
-            "choices": [", ".join(p) for p in itertools.combinations(scenarios, 2)],
-            "name": "exclusions",
-        }
-    ]
-    return [tuple(e.split(", ")) for e in prompt(questions)["exclusions"]]
+    print("Enter scenario pairs to exclude (e.g., mole,lab;theater,butterfly). Press Enter to skip.")
+    exclusions_str = input("Exclusions: ")
+    if not exclusions_str:
+        return []
+    
+    exclusion_pairs = [tuple(p.strip().split(",")) for p in exclusions_str.split(";")]
+    return exclusion_pairs
 
 def get_output_details():
     """Gets the output directory and base filename from the user."""
-    questions = [
-        {"type": "input", "message": "Enter the output directory:", "name": "dir", "default": "./output"},
-        {"type": "input", "message": "Enter a base name for the output files:", "name": "basename", "default": "schedule"},
-    ]
-    return prompt(questions)
+    output_dir = input("Enter the output directory (default: ./output): ") or "./output"
+    basename = input("Enter a base name for the output files (default: schedule): ") or "schedule"
+    return {"dir": output_dir, "basename": basename}
 
 def main():
     """Main function to generate bWell session scheduler configuration files."""

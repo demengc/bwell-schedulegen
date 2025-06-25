@@ -14,15 +14,16 @@ class TestBwellSchedulegen(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.output_dir)
 
-    @patch("generator.prompt")
-    def test_2_4_excl_theater_butterfly(self, mock_prompt):
+    @patch("builtins.input")
+    def test_2_4_excl_theater_butterfly(self, mock_input):
         """Test 2 of 4 scenarios, excluding theater and butterfly."""
-        mock_prompt.side_effect = [
-            {"scenarios": ["mole", "lab", "theater", "butterfly"]},
-            {"length": 2},
-            {"duration": 120.0},
-            {"exclusions": ["theater, butterfly"]},
-            {"dir": self.output_dir, "basename": "schedule"},
+        mock_input.side_effect = [
+            "mole, lab, theater, butterfly", # scenarios
+            "2", # length
+            "120.0", # duration
+            "theater,butterfly", # exclusions
+            self.output_dir, # output dir
+            "schedule" # base name
         ]
 
         main()
@@ -38,18 +39,19 @@ class TestBwellSchedulegen(unittest.TestCase):
             ("lab", "butterfly"), ("butterfly", "lab"),
         }
 
-        expected_filenames = {f"schedule_{''.join(p)}.json" for p in expected_permutations}
+        expected_filenames = {f"schedule_{p[0]}_{p[1]}.json" for p in expected_permutations}
         self.assertEqual(set(files), expected_filenames)
 
-    @patch("generator.prompt")
-    def test_all_permutations_of_3(self, mock_prompt):
+    @patch("builtins.input")
+    def test_all_permutations_of_3(self, mock_input):
         """Test generating all permutations of 3 scenarios."""
-        mock_prompt.side_effect = [
-            {"scenarios": ["mole", "lab", "theater"]},
-            {"length": 3},
-            {"duration": 60.0},
-            {"exclusions": []},
-            {"dir": self.output_dir, "basename": "test"},
+        mock_input.side_effect = [
+            "mole, lab, theater", # scenarios
+            "3", # length
+            "60.0", # duration
+            "", # exclusions
+            self.output_dir, # output dir
+            "test" # base name
         ]
 
         main()
@@ -59,18 +61,19 @@ class TestBwellSchedulegen(unittest.TestCase):
 
         scenarios = ["mole", "lab", "theater"]
         expected_permutations = set(itertools.permutations(scenarios, 3))
-        expected_filenames = {f"test_{''.join(p)}.json" for p in expected_permutations}
+        expected_filenames = {f"test_{p[0]}_{p[1]}_{p[2]}.json" for p in expected_permutations}
         self.assertEqual(set(files), expected_filenames)
 
-    @patch("generator.prompt")
-    def test_no_exclusions(self, mock_prompt):
+    @patch("builtins.input")
+    def test_no_exclusions(self, mock_input):
         """Test with no exclusions."""
-        mock_prompt.side_effect = [
-            {"scenarios": ["mole", "lab"]},
-            {"length": 2},
-            {"duration": 10.0},
-            {"exclusions": []},
-            {"dir": self.output_dir, "basename": "no_exclusions"},
+        mock_input.side_effect = [
+            "mole, lab", # scenarios
+            "2", # length
+            "10.0", # duration
+            "", # exclusions
+            self.output_dir, # output dir
+            "no_exclusions" # base name
         ]
 
         main()
@@ -80,7 +83,7 @@ class TestBwellSchedulegen(unittest.TestCase):
 
         scenarios = ["mole", "lab"]
         expected_permutations = set(itertools.permutations(scenarios, 2))
-        expected_filenames = {f"no_exclusions_{''.join(p)}.json" for p in expected_permutations}
+        expected_filenames = {f"no_exclusions_{p[0]}_{p[1]}.json" for p in expected_permutations}
         self.assertEqual(set(files), expected_filenames)
 
 
