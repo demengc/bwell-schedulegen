@@ -1,8 +1,6 @@
 import os
 import json
 import itertools
-# from InquirerPy import prompt
-# from InquirerPy.validator import EmptyInputValidator
 
 def get_scenarios():
     """Gets scenario choices from the user."""
