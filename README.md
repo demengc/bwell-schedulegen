@@ -1,4 +1,4 @@
-# bwell_schedulegen
+# bwell-schedulegen
 
 A command-line tool for generating session scheduler configuration files for the National Research Council's (NRC) [bWell](https://nrc.canada.ca/en/research-development/products-services/technical-advisory-services/bwell) application. You can specify the scenarios, the number of scenarios per session, the duration of each scenario, and any scenario combinations to exclude.
 
