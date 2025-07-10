@@ -13,3 +13,6 @@ python generator.py
 Follow the prompts to configure the session generation.
 
 The generated files will be placed in the specified output directory (defaults to `./output`). Filenames are generated based on the base name provided and the scenarios included in the permutation (e.g., `basename_scenario1_scenario2.json`).
+
+## Disclaimer
+This project is not affiliated with or endorsed by the National Research Council (NRC).
