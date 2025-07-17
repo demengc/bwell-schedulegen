@@ -45,3 +45,7 @@ Number of participants: 50
 ```
 
 Generates 8 schedule files (12 total permutations minus 4 excluded), 8 training plans, and assigns 50 users with round-robin distribution.
+
+## Disclaimer
+
+This project is not affiliated with or endorsed by the National Research Council (NRC).
