@@ -1,16 +1,15 @@
-"""
-bWell Session Scheduler Generator
+"""bWell Session Scheduler Generator.
 
 This module generates session schedule configuration files and corresponding
 training plans for the bWell platform. It creates permutations of scenarios
 with user-specified duration and exclusion rules, and generates a users list
-with round-robin training plan assignments.
+with optimized training plan assignments that minimize back-to-back games.
 """
 
 import json
 import os
 from itertools import permutations
-from typing import Dict, List, Set, Tuple, Union
+from typing import Any
 
 # Constants
 AVAILABLE_SCENARIOS = ["mole", "lab", "theater", "butterfly"]
@@ -18,23 +17,23 @@ DEFAULT_OUTPUT_DIR = "./output"
 DEFAULT_BASE_NAME = "schedule"
 DEFAULT_REPETITIONS = "1"
 USERS_LIST_FILENAME = "UsersList.json"
+SMALL_THRESHOLD = 12  # Exact algorithm threshold for TSP optimization
+SECTION_WIDTH = 60
 
 
 def print_section_header(title: str) -> None:
-    """
-    Print a formatted section header.
+    """Print a formatted section header.
     
     Args:
         title: The title of the section.
     """
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * SECTION_WIDTH}")
     print(f"  {title}")
-    print(f"{'='*60}")
+    print(f"{'=' * SECTION_WIDTH}")
 
 
 def print_subsection_header(title: str) -> None:
-    """
-    Print a formatted subsection header.
+    """Print a formatted subsection header.
     
     Args:
         title: The title of the subsection.
@@ -43,24 +42,24 @@ def print_subsection_header(title: str) -> None:
 
 
 def normalize_path_for_display(path: str) -> str:
-    """
-    Normalize a file path for consistent display using forward slashes.
+    """Normalize a file path for consistent display using forward slashes.
     
     Args:
         path: The file path to normalize.
         
     Returns:
-        str: Normalized path with forward slashes.
+        Normalized path with forward slashes.
     """
     return path.replace(os.sep, '/')
 
 
-def get_scenario_configuration() -> Tuple[List[str], int, float, List[Tuple[str, ...]]]:
-    """
-    Get all scenario-related configuration from the user.
+def get_scenario_configuration() -> tuple[list[str], int, float, 
+                                        list[tuple[str, ...]]]:
+    """Get all scenario-related configuration from the user.
     
     Returns:
-        Tuple containing scenarios, permutation length, duration, and exclusions.
+        Tuple containing scenarios, permutation length, duration, and 
+        exclusions.
     """
     print_section_header("SCENARIO CONFIGURATION")
     
@@ -83,9 +82,8 @@ def get_scenario_configuration() -> Tuple[List[str], int, float, List[Tuple[str,
     return scenarios, perm_length, duration, exclusions
 
 
-def get_output_configuration() -> Dict[str, str]:
-    """
-    Get all output-related configuration from the user.
+def get_output_configuration() -> dict[str, str]:
+    """Get all output-related configuration from the user.
     
     Returns:
         Dict containing output directory and base name.
@@ -93,21 +91,21 @@ def get_output_configuration() -> Dict[str, str]:
     print_section_header("OUTPUT CONFIGURATION")
     
     output_dir = (
-        input(f"Enter the output directory (default: {DEFAULT_OUTPUT_DIR}): ").strip()
-        or DEFAULT_OUTPUT_DIR
+        input(f"Enter the output directory (default: {DEFAULT_OUTPUT_DIR}): ")
+        .strip() or DEFAULT_OUTPUT_DIR
     )
     
     base_name = (
-        input(f"Enter a base name for the output files (default: {DEFAULT_BASE_NAME}): ").strip()
-        or DEFAULT_BASE_NAME
+        input(f"Enter a base name for the output files "
+              f"(default: {DEFAULT_BASE_NAME}): ")
+        .strip() or DEFAULT_BASE_NAME
     )
     
     return {"dir": output_dir, "base_name": base_name}
 
 
-def get_user_configuration() -> Dict[str, Union[str, int]]:
-    """
-    Get all user-related configuration from the user.
+def get_user_configuration() -> dict[str, str | int]:
+    """Get all user-related configuration from the user.
     
     Returns:
         Dict containing user ID prefix and participant count.
@@ -135,12 +133,11 @@ def get_user_configuration() -> Dict[str, Union[str, int]]:
     return {"prefix": user_id_prefix, "count": participant_count}
 
 
-def get_scenarios() -> List[str]:
-    """
-    Get scenario choices from the user.
+def get_scenarios() -> list[str]:
+    """Get scenario choices from the user.
     
     Returns:
-        List[str]: List of valid scenario names selected by the user.
+        List of valid scenario names selected by the user.
     """
     print(f"Available scenarios: {', '.join(AVAILABLE_SCENARIOS)}")
     
@@ -168,15 +165,14 @@ def get_scenarios() -> List[str]:
             )
 
 
-def get_permutation_length(scenarios: List[str]) -> int:
-    """
-    Get the number of scenarios per permutation from the user.
+def get_permutation_length(scenarios: list[str]) -> int:
+    """Get the number of scenarios per permutation from the user.
     
     Args:
         scenarios: List of available scenarios.
         
     Returns:
-        int: Number of scenarios for each permutation.
+        Number of scenarios for each permutation.
     """
     max_length = len(scenarios)
     
@@ -198,11 +194,10 @@ def get_permutation_length(scenarios: List[str]) -> int:
 
 
 def get_duration() -> float:
-    """
-    Get the duration for each scenario from the user.
+    """Get the duration for each scenario from the user.
     
     Returns:
-        float: Duration in seconds for each scenario.
+        Duration in seconds for each scenario.
     """
     while True:
         try:
@@ -219,12 +214,11 @@ def get_duration() -> float:
             print("Invalid input. Please enter a number.")
 
 
-def get_exclusions() -> List[Tuple[str, ...]]:
-    """
-    Get scenario combinations to exclude from the user.
+def get_exclusions() -> list[tuple[str, ...]]:
+    """Get scenario combinations to exclude from the user.
     
     Returns:
-        List[Tuple[str, ...]]: List of scenario tuples to exclude.
+        List of scenario tuples to exclude.
     """
     print(
         "Enter scenario pairs to exclude "
@@ -243,15 +237,14 @@ def get_exclusions() -> List[Tuple[str, ...]]:
     return exclusion_pairs
 
 
-def create_directory_structure(output_dir: str) -> Tuple[str, str]:
-    """
-    Create the directory structure for schedules and training plans.
+def create_directory_structure(output_dir: str) -> tuple[str, str]:
+    """Create the directory structure for schedules and training plans.
     
     Args:
         output_dir: Base output directory path.
         
     Returns:
-        Tuple[str, str]: Paths to schedules and training plans directories.
+        Tuple of paths to schedules and training plans directories.
     """
     schedules_dir = os.path.join(output_dir, "schedules")
     training_plans_dir = os.path.join(output_dir, "training_plans")
@@ -263,23 +256,22 @@ def create_directory_structure(output_dir: str) -> Tuple[str, str]:
 
 
 def filter_exclusions(
-    permutation_list: List[Tuple[str, ...]],
-    exclusions: List[Tuple[str, ...]]
-) -> List[Tuple[str, ...]]:
-    """
-    Filter out permutations that contain excluded scenario combinations.
+    permutation_list: list[tuple[str, ...]],
+    exclusions: list[tuple[str, ...]]
+) -> list[tuple[str, ...]]:
+    """Filter out permutations that contain excluded scenario combinations.
     
     Args:
         permutation_list: List of scenario permutations.
         exclusions: List of scenario combinations to exclude.
         
     Returns:
-        List[Tuple[str, ...]]: Filtered list of permutations.
+        Filtered list of permutations.
     """
     if not exclusions:
         return permutation_list
     
-    excluded_permutations: Set[Tuple[str, ...]] = set()
+    excluded_permutations: set[tuple[str, ...]] = set()
     
     for exclusion in exclusions:
         for permutation in permutation_list:
@@ -293,17 +285,16 @@ def filter_exclusions(
 
 
 def generate_schedule_data(
-    scenarios: Tuple[str, ...], duration: float
-) -> Dict[str, List[Dict[str, Union[str, float]]]]:
-    """
-    Generate schedule data structure for given scenarios and duration.
+    scenarios: tuple[str, ...], duration: float
+) -> dict[str, list[dict[str, str | float]]]:
+    """Generate schedule data structure for given scenarios and duration.
     
     Args:
         scenarios: Tuple of scenario names.
         duration: Duration for each scenario step.
         
     Returns:
-        Dict: Schedule data structure.
+        Schedule data structure.
     """
     return {
         "steps": [
@@ -313,15 +304,16 @@ def generate_schedule_data(
     }
 
 
-def generate_training_plan_data(schedule_filename: str) -> Dict[str, List[Dict[str, str]]]:
-    """
-    Generate training plan data structure for given schedule file.
+def generate_training_plan_data(
+    schedule_filename: str
+) -> dict[str, list[dict[str, str]]]:
+    """Generate training plan data structure for given schedule file.
     
     Args:
         schedule_filename: Name of the corresponding schedule file.
         
     Returns:
-        Dict: Training plan data structure.
+        Training plan data structure.
     """
     return {
         "sessions": [
@@ -334,74 +326,388 @@ def generate_training_plan_data(schedule_filename: str) -> Dict[str, List[Dict[s
 
 
 def generate_user_id(user_index: int, prefix: str) -> str:
-    """
-    Generate user ID based on index and optional prefix.
+    """Generate user ID based on index and optional prefix.
     
     Args:
         user_index: Zero-based user index.
         prefix: Optional prefix for user ID.
         
     Returns:
-        str: Generated user ID.
+        Generated user ID.
     """
     user_number = f"{user_index:05d}"
+    return f"{prefix}_{user_number}" if prefix else user_number
+
+
+def calculate_permutation_overlap(
+    perm1: tuple[str, ...], perm2: tuple[str, ...]
+) -> int:
+    """Calculate the number of overlapping scenarios between two permutations.
     
-    if prefix:
-        return f"{prefix}_{user_number}"
+    Args:
+        perm1: First permutation.
+        perm2: Second permutation.
+        
+    Returns:
+        Number of overlapping scenarios.
+    """
+    return len(set(perm1).intersection(set(perm2)))
+
+
+def reconstruct_path(
+    dp: list[list[tuple[int, int]]], 
+    end_idx: int, 
+    full_mask: int
+) -> list[int]:
+    """Reconstruct the optimal path from dynamic programming table.
     
-    return user_number
+    Args:
+        dp: Dynamic programming table.
+        end_idx: Ending index of the path.
+        full_mask: Bitmask representing all visited nodes.
+        
+    Returns:
+        List of node indices in the optimal path.
+    """
+    path = []
+    mask = full_mask
+    curr = end_idx
+    
+    while curr != -1:
+        path.append(curr)
+        _, parent = dp[mask][curr]
+        mask ^= (1 << curr)
+        curr = parent
+    
+    path.reverse()
+    return path
+
+
+def calculate_max_consecutive_runs(sequence: list[tuple[str, ...]]) -> int:
+    """Calculate the maximum consecutive runs of any scenario.
+    
+    Args:
+        sequence: Sequence of permutations to analyze.
+        
+    Returns:
+        Maximum number of consecutive occurrences of any scenario.
+    """
+    max_count = 0
+    
+    for scenario in AVAILABLE_SCENARIOS:
+        count = 0
+        best = 0
+        
+        # Include wrap-around by appending first element
+        for perm in sequence + sequence[:1]:
+            if scenario in perm:
+                count += 1
+            else:
+                best = max(best, count)
+                count = 0
+        
+        best = max(best, count)
+        max_count = max(max_count, best)
+    
+    return max_count
+
+
+def find_optimal_rotation(
+    permutations: list[tuple[str, ...]]
+) -> list[tuple[str, ...]]:
+    """Find the optimal rotation of permutations to minimize consecutive runs.
+    
+    Args:
+        permutations: List of permutations to rotate.
+        
+    Returns:
+        Optimally rotated list of permutations.
+    """
+    rotation_best = permutations
+    run_best = calculate_max_consecutive_runs(permutations)
+    
+    for start in range(1, len(permutations)):
+        rotated = permutations[start:] + permutations[:start]
+        runs = calculate_max_consecutive_runs(rotated)
+        
+        if runs < run_best:
+            rotation_best, run_best = rotated, runs
+    
+    return rotation_best
+
+
+def solve_tsp_exact(
+    permutations: list[tuple[str, ...]], 
+    cost_matrix: list[list[int]]
+) -> list[tuple[str, ...]]:
+    """Solve TSP exactly using Held-Karp dynamic programming.
+    
+    Args:
+        permutations: List of permutations.
+        cost_matrix: Pairwise cost matrix.
+        
+    Returns:
+        Optimal tour of permutations.
+    """
+    n = len(permutations)
+    full_mask = (1 << n) - 1
+    
+    # dp[mask][i] -> (cost, parent)
+    dp: list[list[tuple[int, int]]] = [
+        [(float('inf'), -1) for _ in range(n)] for _ in range(1 << n)
+    ]
+    
+    # Start at node 0
+    dp[1][0] = (0, -1)
+    
+    # Fill DP table
+    for mask in range(1, full_mask + 1):
+        for j in range(n):
+            if not (mask & (1 << j)):
+                continue
+                
+            cost_to_j, _ = dp[mask][j]
+            if cost_to_j == float('inf'):
+                continue
+                
+            for k in range(n):
+                if mask & (1 << k):
+                    continue
+                    
+                new_mask = mask | (1 << k)
+                new_cost = cost_to_j + cost_matrix[j][k]
+                
+                if new_cost < dp[new_mask][k][0]:
+                    dp[new_mask][k] = (new_cost, j)
+    
+    # Find best tour completion
+    best_cost = float('inf')
+    candidate_ends = []
+    
+    for j in range(1, n):
+        tour_cost = dp[full_mask][j][0] + cost_matrix[j][0]
+        if tour_cost < best_cost:
+            best_cost = tour_cost
+            candidate_ends = [j]
+        elif tour_cost == best_cost:
+            candidate_ends.append(j)
+    
+    # Find best rotation among optimal tours
+    best_rotation = None
+    best_run = float('inf')
+    
+    for end in candidate_ends:
+        path_indices = reconstruct_path(dp, end, full_mask)
+        perms = [permutations[i] for i in path_indices]
+        rotation_best = find_optimal_rotation(perms)
+        run_best = calculate_max_consecutive_runs(rotation_best)
+        
+        if run_best < best_run:
+            best_run = run_best
+            best_rotation = rotation_best
+    
+    return best_rotation or permutations
+
+
+def solve_tsp_greedy(
+    permutations: list[tuple[str, ...]], 
+    cost_matrix: list[list[int]]
+) -> list[tuple[str, ...]]:
+    """Solve TSP using greedy multi-start heuristic.
+    
+    Args:
+        permutations: List of permutations.
+        cost_matrix: Pairwise cost matrix.
+        
+    Returns:
+        Good tour of permutations.
+    """
+    n = len(permutations)
+    best_order = None
+    best_score = float('inf')
+    
+    for start_idx in range(n):
+        ordered = [permutations[start_idx]]
+        remaining = [p for i, p in enumerate(permutations) if i != start_idx]
+        
+        while remaining:
+            last = ordered[-1]
+            last_idx = permutations.index(last)
+            
+            # Choose candidate with minimal cost to last; tie-break by 
+            # minimal cumulative cost to all already chosen
+            best_candidate = min(
+                remaining,
+                key=lambda perm: (
+                    cost_matrix[last_idx][permutations.index(perm)],
+                    sum(cost_matrix[permutations.index(perm)]
+                        [permutations.index(o)] for o in ordered)
+                )
+            )
+            
+            ordered.append(best_candidate)
+            remaining.remove(best_candidate)
+        
+        # Calculate cyclic cost
+        total_cost = sum(
+            cost_matrix[permutations.index(ordered[i])]
+            [permutations.index(ordered[(i + 1) % n])]
+            for i in range(n)
+        )
+        
+        if total_cost < best_score:
+            best_score = total_cost
+            best_order = ordered
+    
+    return best_order or permutations
+
+
+def create_optimal_permutation_order(
+    permutations: list[tuple[str, ...]]
+) -> list[tuple[str, ...]]:
+    """Create an optimal ordering of permutations to minimize consecutive 
+    overlaps.
+ 
+    The function treats the problem as a travelling-salesperson tour where
+    the "distance" between two nodes is the number of overlapping scenarios.
+    An optimal tour therefore minimises the sum of overlaps between each pair
+    of consecutive permutations *including* the wrap-around from the last back
+    to the first.  
+
+    For small problem sizes (<= 12 permutations) an exact Held-Karp dynamic
+    programming algorithm is used to obtain the optimal cycle. For larger
+    instances an enhanced greedy heuristic (multi-start nearest-neighbour)
+    provides a good approximation while avoiding exponential blow-up.
+    
+    Args:
+        permutations: List of permutations to order.
+        
+    Returns:
+        Optimally ordered list of permutations.
+    """
+    if not permutations:
+        return []
+    
+    n = len(permutations)
+    
+    # Trivial case
+    if n == 1:
+        return permutations
+    
+    # Pre-compute pairwise overlap costs
+    cost_matrix = [
+        [calculate_permutation_overlap(p1, p2) for p2 in permutations]
+        for p1 in permutations
+    ]
+    
+    # Choose algorithm based on problem size
+    if n <= SMALL_THRESHOLD:
+        return solve_tsp_exact(permutations, cost_matrix)
+    else:
+        return solve_tsp_greedy(permutations, cost_matrix)
 
 
 def generate_users_list_data(
-    training_plan_filenames: List[str],
-    user_details: Dict[str, Union[str, int]]
-) -> Dict[str, List[Dict[str, str]]]:
-    """
-    Generate users list data with round-robin training plan assignment.
+    training_plan_filenames: list[str],
+    user_details: dict[str, str | int],
+    base_name: str = "",
+    permutations_order: list[tuple[str, ...]] | None = None
+) -> dict[str, list[dict[str, str]]]:
+    """Generate users list data using simple round-robin assignment.
     
     Args:
         training_plan_filenames: List of available training plan filenames.
         user_details: Dictionary containing user prefix and participant count.
+        base_name: Base name used in filename generation.
+        permutations_order: Optional pre-ordered list of permutations for 
+            display.
         
     Returns:
-        Dict: Users list data structure.
+        Users list data structure.
     """
     users = []
     participant_count = int(user_details["count"])
     prefix = str(user_details["prefix"])
     
+    if not training_plan_filenames:
+        return {"users": users}
+    
+    # Simple round-robin assignment
     for i in range(participant_count):
         user_id = generate_user_id(i, prefix)
-        # Round-robin assignment
-        training_plan = training_plan_filenames[i % len(training_plan_filenames)]
+        plan_index = i % len(training_plan_filenames)
+        assigned_plan = training_plan_filenames[plan_index]
         
         users.append({
             "id": user_id,
-            "plan": training_plan
+            "plan": assigned_plan
         })
     
     return {"users": users}
 
 
-def create_filename(base_name: str, scenario_names: str) -> str:
+def display_assignment_order(
+    optimal_order: list[tuple[str, ...]], 
+    base_name: str
+) -> None:
+    """Display the optimal assignment order of permutations.
+    
+    Args:
+        optimal_order: List of permutations in optimal order.
+        base_name: Base name used in filename generation.
     """
-    Create filename based on base name and scenario combination.
+    print_section_header("OPTIMIZED ASSIGNMENT ORDER")
+    
+    print("Training plans will be assigned in this order to minimize "
+          "repetition:")
+    print("(Users will cycle through this list using round-robin assignment)")
+    print()
+    
+    for i, permutation in enumerate(optimal_order, 1):
+        scenario_names = "_".join(permutation)
+        filename = create_filename(base_name, scenario_names)
+        
+        # Calculate overlap with previous permutation
+        overlap_info = ""
+        if i > 1:
+            prev_permutation = optimal_order[i-2]
+            overlap = calculate_permutation_overlap(prev_permutation, 
+                                                  permutation)
+            overlap_info = f" (overlap with previous: {overlap})"
+        
+        print(f"{i:2d}. {filename}{overlap_info}")
+    
+    # Calculate and display total overlap score *including* last -> first
+    total_overlap = sum(
+        calculate_permutation_overlap(
+            optimal_order[i], 
+            optimal_order[(i + 1) % len(optimal_order)]
+        )
+        for i in range(len(optimal_order))
+    )
+
+    print(f"\nTotal consecutive overlap score (cyclic): {total_overlap}")
+    print("(Lower scores indicate better distribution with less repetition, "
+          "including wrap-around)")
+
+
+def create_filename(base_name: str, scenario_names: str) -> str:
+    """Create filename based on base name and scenario combination.
     
     Args:
         base_name: Base name for the file.
         scenario_names: Underscore-separated scenario names.
         
     Returns:
-        str: Generated filename.
+        Generated filename.
     """
     if base_name:
         return f"{base_name}_{scenario_names}.json"
     return f"{scenario_names}.json"
 
 
-def write_json_file(file_path: str, data: Dict) -> None:
-    """
-    Write data to JSON file with proper formatting.
+def write_json_file(file_path: str, data: dict[str, Any]) -> None:
+    """Write data to JSON file with proper formatting.
     
     Args:
         file_path: Path to the output file.
@@ -412,24 +718,24 @@ def write_json_file(file_path: str, data: Dict) -> None:
 
 
 def generate_files(
-    final_permutations: List[Tuple[str, ...]],
+    final_permutations: list[tuple[str, ...]],
     duration: float,
     base_name: str,
     schedules_dir: str,
     training_plans_dir: str
-) -> List[str]:
-    """
-    Generate schedule and training plan files for all permutations.
+) -> list[str]:
+    """Generate schedule and training plan files for all permutations.
     
     Args:
-        final_permutations: List of scenario permutations to generate files for.
+        final_permutations: List of scenario permutations to generate files 
+            for.
         duration: Duration for each scenario step.
         base_name: Base name for the files.
         schedules_dir: Directory for schedule files.
         training_plans_dir: Directory for training plan files.
         
     Returns:
-        List[str]: List of generated training plan filenames.
+        List of generated training plan filenames.
     """
     print_section_header("GENERATING FILES")
     
@@ -457,26 +763,33 @@ def generate_files(
 
 
 def generate_users_list(
-    training_plan_filenames: List[str],
-    user_details: Dict[str, Union[str, int]],
-    output_dir: str
+    training_plan_filenames: list[str],
+    user_details: dict[str, str | int],
+    output_dir: str,
+    base_name: str = "",
+    optimal_order: list[tuple[str, ...]] | None = None
 ) -> None:
-    """
-    Generate the users list file.
+    """Generate the users list file.
     
     Args:
         training_plan_filenames: List of training plan filenames.
         user_details: User configuration details.
         output_dir: Output directory path.
+        base_name: Base name used in filename generation.
+        optimal_order: Optimal order of permutations for display.
     """
     if not training_plan_filenames:
         return
     
     users_list_data = generate_users_list_data(
-        training_plan_filenames, user_details
+        training_plan_filenames, user_details, base_name, optimal_order
     )
     users_list_path = os.path.join(output_dir, USERS_LIST_FILENAME)
     write_json_file(users_list_path, users_list_data)
+
+    # Display the assignment order if provided
+    if optimal_order:
+        display_assignment_order(optimal_order, base_name)
 
 
 def display_results(
@@ -486,8 +799,7 @@ def display_results(
     output_dir: str,
     participant_count: int
 ) -> None:
-    """
-    Display the final results in a formatted manner.
+    """Display the final results in a formatted manner.
     
     Args:
         files_generated: Number of files generated.
@@ -505,26 +817,29 @@ def display_results(
     print(f"  Location: {normalize_path_for_display(training_plans_dir)}")
     
     print(f"\n✓ Generated users list with {participant_count} participants")
-    print(f"  Location: {normalize_path_for_display(os.path.join(output_dir, USERS_LIST_FILENAME))}")
+    users_list_path = os.path.join(output_dir, USERS_LIST_FILENAME)
+    print(f"  Location: {normalize_path_for_display(users_list_path)}")
     
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * SECTION_WIDTH}")
     print("All files generated successfully!")
-    print(f"{'='*60}")
+    print(f"{'=' * SECTION_WIDTH}")
 
 
 def main() -> None:
-    """
-    Main function to generate bWell session scheduler configuration files.
+    """Generate bWell session scheduler configuration files.
     
     Generates schedule files, corresponding training plan files, and a users
     list with round-robin training plan assignments based on user input for
-    scenarios, permutation length, duration, exclusion rules, and user details.
+    scenarios, permutation length, duration, exclusion rules, and user 
+    details.
     """
     print("Welcome to the bWell Session Scheduler Generator!")
 
     try:
         # Get user input in organized sections
-        scenarios, perm_length, duration, exclusions = get_scenario_configuration()
+        scenarios, perm_length, duration, exclusions = (
+            get_scenario_configuration()
+        )
         output_details = get_output_configuration()
         user_details = get_user_configuration()
         
@@ -532,23 +847,32 @@ def main() -> None:
         base_name = output_details["base_name"]
 
         # Create directory structure
-        schedules_dir, training_plans_dir = create_directory_structure(output_dir)
+        schedules_dir, training_plans_dir = create_directory_structure(
+            output_dir
+        )
 
         # Generate and filter permutations
         all_permutations = list(permutations(scenarios, perm_length))
         final_permutations = filter_exclusions(all_permutations, exclusions)
+        
+        # Create optimal ordering for minimal repetition
+        optimal_order = create_optimal_permutation_order(final_permutations)
 
-        # Generate files
+        # Generate files using optimal order
         training_plan_filenames = generate_files(
-            final_permutations, duration, base_name, schedules_dir, training_plans_dir
+            optimal_order, duration, base_name, schedules_dir, 
+            training_plans_dir
         )
 
-        # Generate users list
-        generate_users_list(training_plan_filenames, user_details, output_dir)
+        # Generate users list with optimal order
+        generate_users_list(
+            training_plan_filenames, user_details, output_dir, base_name, 
+            optimal_order
+        )
 
         # Display results
         display_results(
-            len(final_permutations),
+            len(optimal_order),
             schedules_dir,
             training_plans_dir,
             output_dir,
@@ -563,4 +887,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main() 
+    main()

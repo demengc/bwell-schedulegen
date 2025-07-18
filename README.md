@@ -7,7 +7,8 @@ A command-line tool for generating session scheduler configuration files for the
 - Generate permutations of training scenarios (mole, lab, theater, butterfly)
 - Create schedule files, training plans, and user lists
 - Configure scenario duration and exclusion rules
-- Round-robin user assignment to training plans
+- Smart user assignment with game overlap minimization - reduces back-to-back individual games between consecutive users
+- Balanced distribution ensures equal usage of all training plans
 
 ## Usage
 
@@ -44,7 +45,7 @@ User ID prefix: SICKKIDS
 Number of participants: 50
 ```
 
-Generates 8 schedule files (12 total permutations minus 4 excluded), 8 training plans, and assigns 50 users with round-robin distribution.
+Generates 8 schedule files (12 total permutations minus 4 excluded), 8 training plans, and assigns 50 users with smart assignment (minimizing consecutive tasks).
 
 ## Disclaimer
 
