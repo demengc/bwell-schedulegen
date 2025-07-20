@@ -39,6 +39,7 @@ Enter scenarios to include: mole,lab,theater,butterfly
 Enter the number of scenarios for each permutation (1-4): 2
 Enter the duration in seconds for each scenario: 300
 Exclusions: theater,butterfly;mole,lab
+Clinical Preferences: norming
 Output directory: ./output
 Base name: training
 User ID prefix: SICKKIDS

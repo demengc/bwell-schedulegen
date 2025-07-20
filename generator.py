@@ -54,12 +54,12 @@ def normalize_path_for_display(path: str) -> str:
 
 
 def get_scenario_configuration() -> tuple[list[str], int, float, 
-                                        list[tuple[str, ...]]]:
+                                        list[tuple[str, ...]], str]:
     """Get all scenario-related configuration from the user.
     
     Returns:
-        Tuple containing scenarios, permutation length, duration, and 
-        exclusions.
+        Tuple containing scenarios, permutation length, duration, 
+        exclusions, and clinical preferences.
     """
     print_section_header("SCENARIO CONFIGURATION")
     
@@ -79,7 +79,10 @@ def get_scenario_configuration() -> tuple[list[str], int, float,
     if len(scenarios) > 1 and perm_length > 1:
         exclusions = get_exclusions()
     
-    return scenarios, perm_length, duration, exclusions
+    # Get clinical preferences
+    clinical_preferences = get_clinical_preferences()
+    
+    return scenarios, perm_length, duration, exclusions, clinical_preferences
 
 
 def get_output_configuration() -> dict[str, str]:
@@ -237,6 +240,24 @@ def get_exclusions() -> list[tuple[str, ...]]:
     return exclusion_pairs
 
 
+def get_clinical_preferences() -> str:
+    """Get clinical preferences from the user.
+    
+    Returns:
+        String containing clinical preferences.
+    """
+    print(
+        "Enter clinical preferences (e.g., 'norming', 'level1', 'level3'). "
+        "Press Enter to skip."
+    )
+    clinical_preferences_input = input("Clinical Preferences: ").strip()
+    
+    if not clinical_preferences_input:
+        return ""
+    
+    return clinical_preferences_input
+
+
 def create_directory_structure(output_dir: str) -> tuple[str, str]:
     """Create the directory structure for schedules and training plans.
     
@@ -285,20 +306,27 @@ def filter_exclusions(
 
 
 def generate_schedule_data(
-    scenarios: tuple[str, ...], duration: float
-) -> dict[str, list[dict[str, str | float]]]:
+    scenarios: tuple[str, ...], duration: float, clinical_preferences: str
+) -> dict[str, list[dict[str, str | float | bool]]]:
     """Generate schedule data structure for given scenarios and duration.
     
     Args:
         scenarios: Tuple of scenario names.
         duration: Duration for each scenario step.
+        clinical_preferences: String containing clinical preferences.
         
     Returns:
         Schedule data structure.
     """
     return {
         "steps": [
-            {"scenarioName": scenario, "duration": duration}
+            {
+                "clinicalPreferences": clinical_preferences,
+                "introVideo": "",
+                "duration": duration,
+                "isTutorial": False,
+                "scenarioName": scenario
+            }
             for scenario in scenarios
         ]
     }
@@ -722,7 +750,8 @@ def generate_files(
     duration: float,
     base_name: str,
     schedules_dir: str,
-    training_plans_dir: str
+    training_plans_dir: str,
+    clinical_preferences: str
 ) -> list[str]:
     """Generate schedule and training plan files for all permutations.
     
@@ -733,6 +762,7 @@ def generate_files(
         base_name: Base name for the files.
         schedules_dir: Directory for schedule files.
         training_plans_dir: Directory for training plan files.
+        clinical_preferences: String containing clinical preferences.
         
     Returns:
         List of generated training plan filenames.
@@ -746,7 +776,8 @@ def generate_files(
         filename = create_filename(base_name, scenario_names)
         
         # Generate and write schedule file
-        schedule_data = generate_schedule_data(permutation, duration)
+        schedule_data = generate_schedule_data(permutation, duration, 
+                                              clinical_preferences)
         schedule_path = os.path.join(schedules_dir, filename)
         write_json_file(schedule_path, schedule_data)
         
@@ -810,15 +841,15 @@ def display_results(
     """
     print_section_header("GENERATION COMPLETE")
     
-    print(f"✓ Generated {files_generated} schedule files")
-    print(f"  Location: {normalize_path_for_display(schedules_dir)}")
+    print(f"[+] Generated {files_generated} schedule files")
+    print(f"    Location: {normalize_path_for_display(schedules_dir)}")
     
-    print(f"\n✓ Generated {files_generated} training plan files")
-    print(f"  Location: {normalize_path_for_display(training_plans_dir)}")
+    print(f"\n[+] Generated {files_generated} training plan files")
+    print(f"    Location: {normalize_path_for_display(training_plans_dir)}")
     
-    print(f"\n✓ Generated users list with {participant_count} participants")
+    print(f"\n[+] Generated users list with {participant_count} participants")
     users_list_path = os.path.join(output_dir, USERS_LIST_FILENAME)
-    print(f"  Location: {normalize_path_for_display(users_list_path)}")
+    print(f"    Location: {normalize_path_for_display(users_list_path)}")
     
     print(f"\n{'=' * SECTION_WIDTH}")
     print("All files generated successfully!")
@@ -837,7 +868,7 @@ def main() -> None:
 
     try:
         # Get user input in organized sections
-        scenarios, perm_length, duration, exclusions = (
+        scenarios, perm_length, duration, exclusions, clinical_preferences = (
             get_scenario_configuration()
         )
         output_details = get_output_configuration()
@@ -861,7 +892,7 @@ def main() -> None:
         # Generate files using optimal order
         training_plan_filenames = generate_files(
             optimal_order, duration, base_name, schedules_dir, 
-            training_plans_dir
+            training_plans_dir, clinical_preferences
         )
 
         # Generate users list with optimal order

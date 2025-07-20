@@ -85,6 +85,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "2",  # permutation length
             "10.0",  # duration
             "",  # exclusions
+            "",  # clinical preferences
             self.output_dir,  # output directory
             "schedule",  # base name
             "u",  # user prefix
@@ -122,6 +123,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "3",  # permutation length
             "15.0",  # duration
             "",  # exclusions
+            "",  # clinical preferences
             self.output_dir,  # output directory
             "test",  # base name
             "",  # user prefix
@@ -152,6 +154,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "2",  # permutation length
             "5.0",  # duration
             "",  # exclusions
+            "",  # clinical preferences
             self.output_dir,  # output directory
             "test",  # base name
             "user",  # user prefix
@@ -182,6 +185,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "2",  # permutation length
             "7.5",  # duration
             "mole,lab",  # exclusions
+            "",  # clinical preferences
             self.output_dir,  # output directory
             "no_exclusions",  # base name
             "",  # user prefix
@@ -335,6 +339,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "1",  # permutation length
             "20.0",  # duration
             "",  # exclusions
+            "",  # clinical preferences
             self.output_dir,  # output directory
             "single",  # base name
             "participant",  # user prefix
@@ -371,6 +376,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "2",  # permutation length
             "12.0",  # duration
             "",  # exclusions
+            "",  # clinical preferences
             self.output_dir,  # output directory
             "schedule",  # base name
             "u",  # user prefix
@@ -394,6 +400,58 @@ class TestBwellSchedulegen(unittest.TestCase):
         # Verify round-robin assignment (files are in optimal order now)
         for user in users_list["users"]:
             self.assertIn(user["plan"], training_plan_files)
+
+    def test_new_schema_format(self) -> None:
+        """Test that generated schedules follow the new schema format."""
+        inputs = [
+            "mole,lab",  # scenarios
+            "2",  # permutation length
+            "10.0",  # duration
+            "",  # exclusions
+            "prefer_mole_over_lab",  # clinical preferences
+            self.output_dir,  # output directory
+            "schema_test",  # base name
+            "u",  # user prefix
+            "5"  # participant count
+        ]
+        
+        self._run_main_with_inputs(inputs)
+        
+        # Verify files were created
+        schedule_files = os.listdir(self.schedules_dir)
+        self.assertTrue(len(schedule_files) > 0)
+        
+        # Pick the first schedule file and verify its schema
+        schedule_file = schedule_files[0]
+        schedule_path = os.path.join(self.schedules_dir, schedule_file)
+        
+        with open(schedule_path, 'r', encoding='utf-8') as file:
+            schedule_data = json.load(file)
+        
+        # Verify top-level structure
+        self.assertIn("steps", schedule_data)
+        self.assertIsInstance(schedule_data["steps"], list)
+        self.assertTrue(len(schedule_data["steps"]) > 0)
+        
+        # Verify each step has the required fields
+        for step in schedule_data["steps"]:
+            self.assertIn("clinicalPreferences", step)
+            self.assertIn("introVideo", step)
+            self.assertIn("duration", step)
+            self.assertIn("isTutorial", step)
+            self.assertIn("scenarioName", step)
+            
+            # Verify field types and values
+            self.assertIsInstance(step["clinicalPreferences"], str)
+            self.assertEqual(step["clinicalPreferences"], "prefer_mole_over_lab")
+            self.assertIsInstance(step["introVideo"], str)
+            self.assertEqual(step["introVideo"], "")
+            self.assertIsInstance(step["duration"], (int, float))
+            self.assertEqual(step["duration"], 10.0)
+            self.assertIsInstance(step["isTutorial"], bool)
+            self.assertEqual(step["isTutorial"], False)
+            self.assertIsInstance(step["scenarioName"], str)
+            self.assertIn(step["scenarioName"], ["mole", "lab"])
 
     def _get_actual_directories(self) -> tuple[str, str, str]:
         """Get actual directory paths (handles both test and ./output dirs).
