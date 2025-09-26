@@ -84,6 +84,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "mole,lab",  # scenarios
             "2",  # permutation length
             "10.0",  # duration
+            "",  # practice scenes (skip)
             "",  # exclusions
             "",  # clinical preferences
             self.output_dir,  # output directory
@@ -122,6 +123,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "mole,lab,theater",  # scenarios
             "3",  # permutation length
             "15.0",  # duration
+            "",  # practice scenes (skip)
             "",  # exclusions
             "",  # clinical preferences
             self.output_dir,  # output directory
@@ -153,6 +155,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "mole,lab,theater",  # scenarios
             "2",  # permutation length
             "5.0",  # duration
+            "",  # practice scenes (skip)
             "",  # exclusions
             "",  # clinical preferences
             self.output_dir,  # output directory
@@ -184,6 +187,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "mole,lab,theater,butterfly",  # scenarios
             "2",  # permutation length
             "7.5",  # duration
+            "",  # practice scenes (skip)
             "mole,lab",  # exclusions
             "",  # clinical preferences
             self.output_dir,  # output directory
@@ -208,6 +212,38 @@ class TestBwellSchedulegen(unittest.TestCase):
                 ("mole" in filename and "lab" in filename),
                 f"Excluded combination found in {filename}"
             )
+
+    def test_practice_session_insertion(self) -> None:
+        """Test that practice sessions are inserted before selected scenarios."""
+        inputs = [
+            "lab,theater",  # scenarios
+            "1",  # permutation length
+            "60.0",  # duration
+            "lab",  # practice scenes
+            "15",  # practice duration
+            "",  # clinical preferences
+            self.output_dir,  # output directory
+            "practice",  # base name
+            "",  # user prefix
+            "3"  # participant count
+        ]
+
+        self._run_main_with_inputs(inputs)
+
+        lab_schedule_path = os.path.join(self.schedules_dir, "practice_lab.json")
+        with open(lab_schedule_path, "r", encoding="utf-8") as file:
+            schedule = json.load(file)
+
+        steps = schedule.get("steps", [])
+
+        self.assertGreaterEqual(len(steps), 2)
+        self.assertEqual(steps[0]["scenarioName"], "lab")
+        self.assertFalse(steps[0]["isTutorial"])
+        self.assertEqual(steps[0]["duration"], 15.0)
+
+        self.assertEqual(steps[1]["scenarioName"], "lab")
+        self.assertFalse(steps[1]["isTutorial"])
+        self.assertEqual(steps[1]["duration"], 60.0)
 
     def test_optimal_permutation_ordering(self) -> None:
         """Test that optimal permutation ordering minimizes overlaps."""
@@ -338,6 +374,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "mole",  # scenarios
             "1",  # permutation length
             "20.0",  # duration
+            "",  # practice scenes (skip)
             "",  # exclusions
             "",  # clinical preferences
             self.output_dir,  # output directory
@@ -375,6 +412,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "mole,lab,theater,butterfly",  # scenarios
             "2",  # permutation length
             "12.0",  # duration
+            "",  # practice scenes (skip)
             "",  # exclusions
             "",  # clinical preferences
             self.output_dir,  # output directory
@@ -407,6 +445,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             "mole,lab",  # scenarios
             "2",  # permutation length
             "10.0",  # duration
+            "",  # practice scenes (skip)
             "",  # exclusions
             "prefer_mole_over_lab",  # clinical preferences
             self.output_dir,  # output directory

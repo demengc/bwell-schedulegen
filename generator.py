@@ -9,7 +9,7 @@ with optimized training plan assignments that minimize back-to-back games.
 import json
 import os
 from itertools import permutations
-from typing import Any
+from typing import Any, Optional, TypedDict
 
 # Constants
 AVAILABLE_SCENARIOS = ["mole", "lab", "theater", "butterfly"]
@@ -19,6 +19,13 @@ DEFAULT_REPETITIONS = "1"
 USERS_LIST_FILENAME = "UsersList.json"
 SMALL_THRESHOLD = 12  # Exact algorithm threshold for TSP optimization
 SECTION_WIDTH = 60
+
+
+class PracticeConfig(TypedDict):
+    """Typed configuration for optional practice sessions."""
+
+    scenes: list[str]
+    duration: Optional[float]
 
 
 def print_section_header(title: str) -> None:
@@ -53,13 +60,14 @@ def normalize_path_for_display(path: str) -> str:
     return path.replace(os.sep, '/')
 
 
-def get_scenario_configuration() -> tuple[list[str], int, float, 
-                                        list[tuple[str, ...]], str]:
+def get_scenario_configuration() -> tuple[
+    list[str], int, float, list[tuple[str, ...]], str, PracticeConfig
+]:
     """Get all scenario-related configuration from the user.
     
     Returns:
         Tuple containing scenarios, permutation length, duration, 
-        exclusions, and clinical preferences.
+        exclusions, clinical preferences, and optional practice configuration.
     """
     print_section_header("SCENARIO CONFIGURATION")
     
@@ -73,6 +81,9 @@ def get_scenario_configuration() -> tuple[list[str], int, float,
     
     # Get duration
     duration = get_duration()
+
+    # Get practice session configuration
+    practice_config = get_practice_configuration(scenarios)
     
     # Get exclusions (only if applicable)
     exclusions = []
@@ -82,7 +93,14 @@ def get_scenario_configuration() -> tuple[list[str], int, float,
     # Get clinical preferences
     clinical_preferences = get_clinical_preferences()
     
-    return scenarios, perm_length, duration, exclusions, clinical_preferences
+    return (
+        scenarios,
+        perm_length,
+        duration,
+        exclusions,
+        clinical_preferences,
+        practice_config
+    )
 
 
 def get_output_configuration() -> dict[str, str]:
@@ -198,7 +216,7 @@ def get_permutation_length(scenarios: list[str]) -> int:
 
 def get_duration() -> float:
     """Get the duration for each scenario from the user.
-    
+
     Returns:
         Duration in seconds for each scenario.
     """
@@ -215,6 +233,68 @@ def get_duration() -> float:
                 
         except ValueError:
             print("Invalid input. Please enter a number.")
+
+
+def get_practice_configuration(
+    selected_scenarios: list[str]
+) -> PracticeConfig:
+    """Get optional practice session settings from the user.
+
+    Args:
+        selected_scenarios: Scenarios chosen for schedule generation.
+
+    Returns:
+        Practice configuration containing selected scenes and duration.
+    """
+    print(
+        "\nIf you'd like to include practice sessions before certain scenarios, "
+        "list them below. Press Enter to skip."
+    )
+
+    while True:
+        practice_input = input(
+            "Enter scenes for practice sessions (comma-separated): "
+        ).strip()
+
+        if not practice_input:
+            return {"scenes": [], "duration": None}
+
+        practice_scenes = [
+            scene.strip() for scene in practice_input.split(",") if scene.strip()
+        ]
+
+        if not practice_scenes:
+            print("Please enter at least one valid scene name or press Enter to skip.")
+            continue
+
+        invalid_scenes = [
+            scene for scene in practice_scenes if scene not in selected_scenarios
+        ]
+
+        if invalid_scenes:
+            print(
+                "Invalid scene(s) for practice: "
+                + ", ".join(invalid_scenes)
+                + ". Please choose from your selected scenarios."
+            )
+            continue
+
+        while True:
+            try:
+                practice_duration = float(
+                    input("Enter the duration in seconds for the practice session: ")
+                )
+
+                if practice_duration >= 0:
+                    return {
+                        "scenes": practice_scenes,
+                        "duration": practice_duration
+                    }
+
+                print("Duration cannot be negative.")
+
+            except ValueError:
+                print("Invalid input. Please enter a number.")
 
 
 def get_exclusions() -> list[tuple[str, ...]]:
@@ -306,7 +386,10 @@ def filter_exclusions(
 
 
 def generate_schedule_data(
-    scenarios: tuple[str, ...], duration: float, clinical_preferences: str
+    scenarios: tuple[str, ...],
+    duration: float,
+    clinical_preferences: str,
+    practice_config: Optional[PracticeConfig] = None
 ) -> dict[str, list[dict[str, str | float | bool]]]:
     """Generate schedule data structure for given scenarios and duration.
     
@@ -314,12 +397,33 @@ def generate_schedule_data(
         scenarios: Tuple of scenario names.
         duration: Duration for each scenario step.
         clinical_preferences: String containing clinical preferences.
+        practice_config: Optional configuration for practice sessions.
         
     Returns:
         Schedule data structure.
     """
-    return {
-        "steps": [
+    steps: list[dict[str, str | float | bool]] = []
+
+    practice_scenes: set[str] = set()
+    practice_duration: Optional[float] = None
+
+    if practice_config:
+        practice_scenes = set(practice_config.get("scenes", []))
+        practice_duration = practice_config.get("duration")
+
+    for scenario in scenarios:
+        if practice_duration is not None and scenario in practice_scenes:
+            steps.append(
+                {
+                    "clinicalPreferences": clinical_preferences,
+                    "introVideo": "",
+                    "duration": practice_duration,
+                    "isTutorial": False,
+                    "scenarioName": scenario
+                }
+            )
+
+        steps.append(
             {
                 "clinicalPreferences": clinical_preferences,
                 "introVideo": "",
@@ -327,9 +431,9 @@ def generate_schedule_data(
                 "isTutorial": False,
                 "scenarioName": scenario
             }
-            for scenario in scenarios
-        ]
-    }
+        )
+
+    return {"steps": steps}
 
 
 def generate_training_plan_data(
@@ -751,7 +855,8 @@ def generate_files(
     base_name: str,
     schedules_dir: str,
     training_plans_dir: str,
-    clinical_preferences: str
+    clinical_preferences: str,
+    practice_config: Optional[PracticeConfig] = None
 ) -> list[str]:
     """Generate schedule and training plan files for all permutations.
     
@@ -763,6 +868,7 @@ def generate_files(
         schedules_dir: Directory for schedule files.
         training_plans_dir: Directory for training plan files.
         clinical_preferences: String containing clinical preferences.
+        practice_config: Optional configuration for practice sessions.
         
     Returns:
         List of generated training plan filenames.
@@ -776,8 +882,12 @@ def generate_files(
         filename = create_filename(base_name, scenario_names)
         
         # Generate and write schedule file
-        schedule_data = generate_schedule_data(permutation, duration, 
-                                              clinical_preferences)
+        schedule_data = generate_schedule_data(
+            permutation,
+            duration,
+            clinical_preferences,
+            practice_config
+        )
         schedule_path = os.path.join(schedules_dir, filename)
         write_json_file(schedule_path, schedule_data)
         
@@ -868,9 +978,14 @@ def main() -> None:
 
     try:
         # Get user input in organized sections
-        scenarios, perm_length, duration, exclusions, clinical_preferences = (
-            get_scenario_configuration()
-        )
+        (
+            scenarios,
+            perm_length,
+            duration,
+            exclusions,
+            clinical_preferences,
+            practice_config
+        ) = get_scenario_configuration()
         output_details = get_output_configuration()
         user_details = get_user_configuration()
         
@@ -891,8 +1006,13 @@ def main() -> None:
 
         # Generate files using optimal order
         training_plan_filenames = generate_files(
-            optimal_order, duration, base_name, schedules_dir, 
-            training_plans_dir, clinical_preferences
+            optimal_order,
+            duration,
+            base_name,
+            schedules_dir,
+            training_plans_dir,
+            clinical_preferences,
+            practice_config
         )
 
         # Generate users list with optimal order
