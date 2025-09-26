@@ -1,6 +1,15 @@
 # Output
 output/
 
+# macOS and Windows filesystem cruft
+.DS_Store
+.AppleDouble
+.Spotlight-V100
+.Trashes
+._*
+Thumbs.db
+ehthumbs.db
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
