@@ -129,13 +129,28 @@ def get_user_configuration() -> dict[str, str | int]:
     """Get all user-related configuration from the user.
     
     Returns:
-        Dict containing user ID prefix and participant count.
+        Dict containing user ID prefix, digit count, and participant count.
     """
     print_section_header("USER CONFIGURATION")
     
     user_id_prefix = input(
-        "Enter user ID prefix (default: none - just 5-digit numbers): "
+        "Enter user ID prefix (default: none - just numbers): "
     ).strip()
+    
+    while True:
+        try:
+            digit_count = int(
+                input("Enter the number of digits for user IDs (default: 5): ")
+                .strip() or "5"
+            )
+            
+            if 1 <= digit_count <= 10:
+                break
+            else:
+                print("Number of digits must be between 1 and 10.")
+                
+        except ValueError:
+            print("Invalid input. Please enter a number.")
     
     while True:
         try:
@@ -151,7 +166,11 @@ def get_user_configuration() -> dict[str, str | int]:
         except ValueError:
             print("Invalid input. Please enter a number.")
     
-    return {"prefix": user_id_prefix, "count": participant_count}
+    return {
+        "prefix": user_id_prefix, 
+        "digits": digit_count,
+        "count": participant_count
+    }
 
 
 def get_scenarios() -> list[str]:
@@ -457,17 +476,18 @@ def generate_training_plan_data(
     }
 
 
-def generate_user_id(user_index: int, prefix: str) -> str:
-    """Generate user ID based on index and optional prefix.
+def generate_user_id(user_index: int, prefix: str, digit_count: int = 5) -> str:
+    """Generate user ID based on index, optional prefix, and digit count.
     
     Args:
         user_index: Zero-based user index.
         prefix: Optional prefix for user ID.
+        digit_count: Number of digits for the user number (default: 5).
         
     Returns:
         Generated user ID.
     """
-    user_number = f"{user_index:05d}"
+    user_number = f"{user_index:0{digit_count}d}"
     return f"{prefix}_{user_number}" if prefix else user_number
 
 
@@ -760,13 +780,14 @@ def generate_users_list_data(
     users = []
     participant_count = int(user_details["count"])
     prefix = str(user_details["prefix"])
+    digit_count = int(user_details["digits"])
     
     if not training_plan_filenames:
         return {"users": users}
     
     # Simple round-robin assignment
     for i in range(participant_count):
-        user_id = generate_user_id(i, prefix)
+        user_id = generate_user_id(i, prefix, digit_count)
         plan_index = i % len(training_plan_filenames)
         assigned_plan = training_plan_filenames[plan_index]
         

@@ -90,6 +90,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             self.output_dir,  # output directory
             "schedule",  # base name
             "u",  # user prefix
+            "5",  # digit count
             "25"  # participant count
         ]
         
@@ -129,6 +130,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             self.output_dir,  # output directory
             "test",  # base name
             "",  # user prefix
+            "5",  # digit count
             "15"  # participant count
         ]
         
@@ -161,6 +163,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             self.output_dir,  # output directory
             "test",  # base name
             "user",  # user prefix
+            "5",  # digit count
             "12"  # participant count
         ]
         
@@ -193,6 +196,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             self.output_dir,  # output directory
             "no_exclusions",  # base name
             "",  # user prefix
+            "5",  # digit count
             "5"  # participant count
         ]
         
@@ -317,7 +321,7 @@ class TestBwellSchedulegen(unittest.TestCase):
         from generator import generate_users_list_data
         
         training_plans = ["plan1.json", "plan2.json", "plan3.json"]
-        user_details = {"prefix": "test", "count": 10}
+        user_details = {"prefix": "test", "digits": 5, "count": 10}
         
         users_data = generate_users_list_data(training_plans, user_details)
         
@@ -336,7 +340,7 @@ class TestBwellSchedulegen(unittest.TestCase):
         from generator import generate_users_list_data
         
         training_plans = ["plan1.json", "plan2.json", "plan3.json"]
-        user_details = {"prefix": "", "count": 15}
+        user_details = {"prefix": "", "digits": 5, "count": 15}
         
         users_data = generate_users_list_data(training_plans, user_details)
         
@@ -351,22 +355,102 @@ class TestBwellSchedulegen(unittest.TestCase):
             self.assertEqual(plan_counts[plan], 5)
 
     def test_user_id_generation(self) -> None:
-        """Test user ID generation with and without prefix."""
+        """Test user ID generation with and without prefix, and custom digit counts."""
         from generator import generate_user_id
         
-        # Test without prefix
+        # Test without prefix, default digits (5)
         user_id = generate_user_id(0, "")
         self.assertEqual(user_id, "00000")
         
         user_id = generate_user_id(123, "")
         self.assertEqual(user_id, "00123")
         
-        # Test with prefix
+        # Test with prefix, default digits (5)
         user_id = generate_user_id(0, "test")
         self.assertEqual(user_id, "test_00000")
         
         user_id = generate_user_id(456, "user")
         self.assertEqual(user_id, "user_00456")
+        
+        # Test with custom digit counts
+        user_id = generate_user_id(0, "", 3)
+        self.assertEqual(user_id, "000")
+        
+        user_id = generate_user_id(42, "", 4)
+        self.assertEqual(user_id, "0042")
+        
+        user_id = generate_user_id(7, "test", 6)
+        self.assertEqual(user_id, "test_000007")
+        
+        user_id = generate_user_id(999, "id", 2)
+        self.assertEqual(user_id, "id_999")  # Should handle overflow gracefully
+
+    def test_custom_digit_count_integration(self) -> None:
+        """Test integration with custom digit count settings."""
+        inputs = [
+            "mole,lab",  # scenarios
+            "1",  # permutation length
+            "10.0",  # duration
+            "",  # exclusions
+            "",  # clinical preferences
+            self.output_dir,  # output directory
+            "test",  # base name
+            "USER",  # user prefix
+            "3",  # digit count (custom 3 digits)
+            "10"  # participant count
+        ]
+        
+        self._run_main_with_inputs(inputs)
+        
+        # Get actual directory paths (handles both test and ./output dirs)
+        schedules_dir, training_plans_dir, users_list_file = (
+            self._get_actual_directories()
+        )
+        
+        # Verify users list was created
+        with open(users_list_file, 'r', encoding='utf-8') as file:
+            users_list = json.load(file)
+        
+        # Verify all user IDs have 3 digits
+        for user in users_list["users"]:
+            # Should have format USER_XXX where XXX is 3 digits
+            self.assertTrue(user["id"].startswith("USER_"))
+            user_number = user["id"].split("_")[1]
+            self.assertEqual(len(user_number), 3)
+            self.assertTrue(user_number.isdigit())
+
+    def test_four_digit_user_ids(self) -> None:
+        """Test generating 4-digit user IDs as mentioned in the requirements."""
+        inputs = [
+            "mole",  # scenarios
+            "1",  # permutation length
+            "5.0",  # duration
+            "",  # exclusions
+            "",  # clinical preferences
+            self.output_dir,  # output directory
+            "four_digit",  # base name
+            "SICKKIDS",  # user prefix
+            "4",  # digit count (4 digits as requested)
+            "5"  # participant count
+        ]
+        
+        self._run_main_with_inputs(inputs)
+        
+        # Get actual directory paths (handles both test and ./output dirs)
+        schedules_dir, training_plans_dir, users_list_file = (
+            self._get_actual_directories()
+        )
+        
+        # Verify users list was created
+        with open(users_list_file, 'r', encoding='utf-8') as file:
+            users_list = json.load(file)
+        
+        # Verify all user IDs have 4 digits
+        expected_ids = ["SICKKIDS_0000", "SICKKIDS_0001", "SICKKIDS_0002", 
+                       "SICKKIDS_0003", "SICKKIDS_0004"]
+        
+        actual_ids = [user["id"] for user in users_list["users"]]
+        self.assertEqual(actual_ids, expected_ids)
 
     def test_single_scenario_permutation(self) -> None:
         """Test generating single scenario permutations."""
@@ -380,6 +464,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             self.output_dir,  # output directory
             "single",  # base name
             "participant",  # user prefix
+            "5",  # digit count
             "8"  # participant count
         ]
         
@@ -418,6 +503,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             self.output_dir,  # output directory
             "schedule",  # base name
             "u",  # user prefix
+            "5",  # digit count
             "25"  # participant count
         ]
         
@@ -451,6 +537,7 @@ class TestBwellSchedulegen(unittest.TestCase):
             self.output_dir,  # output directory
             "schema_test",  # base name
             "u",  # user prefix
+            "5",  # digit count
             "5"  # participant count
         ]
         

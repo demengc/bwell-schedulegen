@@ -9,6 +9,7 @@ A command-line tool for generating session scheduler configuration files for the
 - Configure scenario duration and exclusion rules
 - Smart user assignment with game overlap minimization - reduces back-to-back individual games between consecutive users
 - Balanced distribution ensures equal usage of all training plans
+- Customizable user ID format with configurable digit count
 
 ## Usage
 
@@ -20,7 +21,7 @@ The tool guides you through three configuration sections:
 
 1. **Scenario Configuration** - Select scenarios, permutation length, duration, and exclusions
 2. **Output Configuration** - Set output directory and file naming
-3. **User Configuration** - Configure user IDs and participant count
+3. **User Configuration** - Configure user IDs (prefix and digit count) and participant count
 
 ### Output Structure
 
@@ -43,10 +44,11 @@ Clinical Preferences: norming
 Output directory: ./output
 Base name: training
 User ID prefix: SICKKIDS
+Number of digits for user IDs: 4
 Number of participants: 50
 ```
 
-Generates 8 schedule files (12 total permutations minus 4 excluded), 8 training plans, and assigns 50 users with smart assignment (minimizing consecutive tasks).
+Generates 8 schedule files (12 total permutations minus 4 excluded), 8 training plans, and assigns 50 users with smart assignment (minimizing consecutive tasks) using 4-digit user IDs like SICKKIDS_0000, SICKKIDS_0001, etc.
 
 ## Disclaimer
 
